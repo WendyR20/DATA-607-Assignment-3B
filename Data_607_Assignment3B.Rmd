@@ -1,0 +1,138 @@
+---
+title: "Data 607 Assignment 3B"
+author: "Wendy Romero"
+date: "2025-09-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(zoo)
+library(dplyr)
+
+```
+
+## R Markdown
+
+We will be looking at the Starbucks Stock Data set, found here:https://www.kaggle.com/datasets/mayankanand2701/starbucks-stock-price-dataset. This data set includes columns for the date of the trading day, the opening, highest, lowest, closing, and adjusted closing price of Starbucks stock. The data set also includes a column for the trading volume of the Starbucks stock on the given day.
+
+We will use the cummean() window function from the dplyr library, and mutate() along with the rollmean() functions from the dplyr and zoo libraries to find the year to date closing and adjusted closing price for each year in the data set. We will also find the six-day moving average by year for the closing and asjusted closing price. 
+
+We will use the following libraries 
+
+-  The **tidyverse** library 
+-  The **zoo** library  
+-  The **dplyr** library 
+
+## Reading in Our Data
+
+Let's first read in our data into a data frame.
+
+```{r read in data}
+url <- ("https://raw.githubusercontent.com/WendyR20/DATA-607-Assignment-3B/refs/heads/main/Starbucks_Dataset.csv")
+df <- read.csv(url)
+```
+
+Now we can take a glimpse at our data, we want to pay attention to the data types of our closing, adjusted closing and date columns.
+
+```{r glimpse data}
+glimpse(df)
+```
+
+We have seen that the Date column is a character type, for the sake of our calculations we will convert this column to a date type.
+
+```{r as data}
+df$Date <- as.Date(df$Date)
+```
+
+## Year to Date Averages
+
+Let's calculate the year to date closing price average per year. 
+
+```{r ytd closing price}
+
+df_ytdm <- df %>%
+  mutate(year = year(Date)) %>%
+  group_by(year) %>%
+  mutate( ytd_avg_price = cummean(Close)) %>%
+  ungroup()
+
+```
+
+Let's calculate the year to date adjusted closing price average per year. 
+
+```{r ytd adjusted closing price}
+df_ytdm2 <- df_ytdm %>% 
+    group_by(year) %>%
+    mutate(ytd_avg_close = cummean(Adj.Close))  %>%
+    ungroup()
+```
+
+Now let's take a look at the year to date closing price average and adjusted closing price average columns we added to our data frame.
+
+```{r view data}
+glimpse(df_ytdm2)
+```
+
+Now, for fun, let's make a summary table of what the year to date closing price and adjusted closing price average on the final day of each year.
+
+```{r summary table}
+Starbucks_summary <-df_ytdm2 %>%
+  group_by(year) %>%
+  summarise(
+    Closing_Price = last(ytd_avg_price),
+    Closing_Adjusted_Price = last(ytd_avg_close)
+  ) %>% 
+ 
+  ungroup()
+
+print(Starbucks_summary)
+```
+
+Lets' plot the the year to date closing price on the final day of each year.
+
+```{r plot summary}
+custom <- theme(
+  plot.title = element_text( vjust = 2, color = "navy"),
+  axis.title.x = element_text( vjust = - 2),
+  axis.title.y = element_text( vjust = + 2)
+)
+
+ggplot(Starbucks_summary, aes(x = year , y = Closing_Price )) +
+  geom_line() +
+  labs(
+    title = ("Starbucks Year to Year Stock Closing Price Change"),
+    x = "Year",
+    y = "Closing Price"
+  ) + 
+  custom
+```
+
+## Six Day Moving Average 
+
+Let's calculate the six day clsoing price moving average (grouping by year).
+
+```{r Calculating 6 Day Closing Moving average by Year}
+df_ytdm2 <- df_ytdm2 %>%
+  group_by(year) %>%
+  mutate(Six_Day_Close_Avg = rollmean(x = Close, k=6, fill = NA, align = "right" ))  %>%
+  ungroup()
+
+head(df_ytdm2)
+```
+
+Let's calculate the six day adjusted clsoing price moving average (grouping by year).
+
+```{r Calculating 6 Day Adjusted Closing Moving average by Year}
+df_ytdm2 <- df_ytdm2 %>%
+  group_by(year) %>%
+  mutate(Six_Day_CloseAdj_Avg = rollmean(x = Adj.Close, k=6, fill = NA, align = "right" ))  %>%
+  ungroup()
+
+head(df_ytdm2)
+```
+
+
+
